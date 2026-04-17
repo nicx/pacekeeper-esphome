@@ -1,0 +1,134 @@
+---
+# PaceKeeper — ESPHome firmware (template)
+#
+# Copy this file to `esp-pacekeeper.yaml` and fill in your values:
+#   cp esp-pacekeeper.example.yaml esp-pacekeeper.yaml
+#
+# The real `esp-pacekeeper.yaml` is gitignored so your secrets stay local.
+#
+# Flash via:  esphome run esp-pacekeeper.yaml
+#
+# Board: any ESP32 with BLE (nodemcu-32s works fine)
+
+esphome:
+  name: esp-pacekeeper
+  friendly_name: esp-pacekeeper
+
+esp32:
+  board: nodemcu-32s
+  framework:
+    type: arduino
+
+logger:
+  level: INFO
+
+# Home Assistant Native API (replaces MQTT)
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: "YOUR_WIFI_SSID"
+  password: "YOUR_WIFI_PASSWORD"
+  # Fallback AP when WiFi is unavailable
+  ap:
+    ssid: "PaceKeeper"
+    password: "YOUR_AP_PASSWORD"
+
+captive_portal:
+
+# ── BLE ────────────────────────────────────────────────────────────────────────
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: false   # passive scan saves power; device already knows us
+
+ble_client:
+  - mac_address: "AA:BB:CC:DD:EE:FF"   # ← your treadmill's Bluetooth address
+    id: walkingpad_ble
+    # ESPHome reconnects automatically when the treadmill is switched on.
+
+# ── Custom WalkingPad component ────────────────────────────────────────────────
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+walkingpad:
+  id: treadmill
+  ble_client_id: walkingpad_ble
+
+  speed_feedback:
+    name: "Speed"
+    id: speed_feedback
+    on_value:
+      then:
+        - lambda: id(speed_control).publish_state(x);
+
+  distance:
+    name: "Distance"
+
+  duration:
+    name: "Duration"
+
+  calories:
+    name: "Calories"
+
+  # Note: steps are not transmitted by all WalkingPad firmware versions.
+  # Remove this block if your device doesn't report steps.
+  steps:
+    name: "Steps"
+
+  max_speed:
+    name: "Max Speed"
+
+  firmware_version:
+    name: "Firmware Version"
+
+  state:
+    name: "State"
+
+# ── Raw BLE notification forwarder ─────────────────────────────────────────────
+# Uses ESPHome's built-in ble_client sensor platform to subscribe to the
+# WalkingPad's NOTIFY characteristic. The lambda forwards the raw bytes into
+# our custom component for parsing. This is the battle-tested subscription
+# path — avoids re-implementing CCCD handling ourselves.
+
+sensor:
+  - platform: ble_client
+    type: characteristic
+    ble_client_id: walkingpad_ble
+    id: walkingpad_raw_notify
+    internal: true
+    service_uuid: "0000fba0-0000-1000-8000-00805f9b34fb"
+    characteristic_uuid: "0000fba2-0000-1000-8000-00805f9b34fb"
+    notify: true
+    lambda: |-
+      id(treadmill).on_notification(x);
+      return {};
+
+# ── Controls ───────────────────────────────────────────────────────────────────
+
+number:
+  - platform: template
+    name: "Speed Control"
+    id: speed_control
+    icon: "mdi:speedometer"
+    unit_of_measurement: "km/h"
+    device_class: speed
+    min_value: 0.0
+    max_value: 6.0
+    step: 0.1
+    mode: slider
+    optimistic: true
+    set_action:
+      - lambda: id(treadmill).set_speed(x);
+
+button:
+  - platform: template
+    name: "Start-Stop"
+    icon: "mdi:play-pause"
+    on_press:
+      - lambda: id(treadmill).start_stop_toggle();
