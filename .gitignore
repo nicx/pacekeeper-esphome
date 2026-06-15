@@ -1,8 +1,12 @@
 # ESPHome build artifacts
 esphome/.esphome/
 esphome/build/
+
+# Local credentials — keep these out of the repo, but track the *.example templates
 esphome/secrets.yaml
 esphome/esp-pacekeeper.yaml
+!esphome/secrets.yaml.example
+!esphome/esp-pacekeeper.example.yaml
 
 # Editor / IDE
 .vscode/.browse.c_cpp.db*

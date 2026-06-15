@@ -1,10 +1,12 @@
 ---
 # PaceKeeper — ESPHome firmware (template)
 #
-# Copy this file to `esp-pacekeeper.yaml` and fill in your values:
+# Setup:
 #   cp esp-pacekeeper.example.yaml esp-pacekeeper.yaml
+#   cp secrets.yaml.example secrets.yaml   # then fill in your credentials
 #
-# The real `esp-pacekeeper.yaml` is gitignored so your secrets stay local.
+# Both `esp-pacekeeper.yaml` and `secrets.yaml` are gitignored so your
+# secrets stay local. Credentials are referenced below via `!secret <key>`.
 #
 # Flash via:  esphome run esp-pacekeeper.yaml
 #
@@ -29,12 +31,12 @@ ota:
   - platform: esphome
 
 wifi:
-  ssid: "YOUR_WIFI_SSID"
-  password: "YOUR_WIFI_PASSWORD"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
   # Fallback AP when WiFi is unavailable
   ap:
     ssid: "PaceKeeper"
-    password: "YOUR_AP_PASSWORD"
+    password: !secret ap_password
 
 captive_portal:
 
@@ -45,7 +47,7 @@ esp32_ble_tracker:
     active: false   # passive scan saves power; device already knows us
 
 ble_client:
-  - mac_address: "AA:BB:CC:DD:EE:FF"   # ← your treadmill's Bluetooth address
+  - mac_address: !secret treadmill_mac   # ← your treadmill's Bluetooth address
     id: walkingpad_ble
     # ESPHome reconnects automatically when the treadmill is switched on.
 
